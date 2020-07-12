@@ -1,0 +1,105 @@
+<html>
+    <head>
+</style>
+
+  <script src="http:///s3.neyer.me/js/jquery.min.js"></script>
+  <script>
+$(document).ready(function(){
+
+    c = document.getElementById("draw-canvas");
+    var ctx = c.getContext("2d");
+
+    var lineBorder = 10;
+    var width = 800, height = 800;
+    var lineWidth = 20;
+    var lineSpacing = 5;
+    // 7 colors, but some are more bigger than others
+    var triangleHeight = height/(2*7*2);
+
+    // overall animation cycle frequency
+    var PulseInterval = 4000;
+
+
+  // as the user clicks, we will add to this list
+    var clickDurations = [];
+    var maxIntervals = (width-lineBorder*2)/(lineWidth+lineSpacing) - 1;
+
+    // first draw a box around it
+    function drawBorder() {
+      ctx.beginPath();
+      ctx.moveTo(lineBorder, lineBorder);
+      ctx.lineTo(width-lineBorder, lineBorder);
+      ctx.lineTo(width-lineBorder, height-lineBorder);
+      ctx.lineTo(lineBorder, height-lineBorder);
+      ctx.closePath();
+      ctx.stroke();
+    };
+
+    drawBorder();
+
+
+    // the goal here is to draw some shapes of varying sizes
+    // a large number of shapes with small sizes
+    // and a small number of shapes with large sizes
+
+    function clearBox() {
+      ctx.fillStyle = 'rgba(0,0,0,1.0)';
+      ctx.fillRect(0,0,width,height);
+    }
+
+    function drawRedTriangle(timestamp) {
+        ctx.beginPath();
+        // rotate according to the time
+        ctx.translate(width/2.0, height/2.0);
+        ctx.rotate(Math.PI*2*timestamp/PulseInterval);
+        ctx.moveTo(0, - triangleHeight);
+        // 30 degress in radians
+        var angle = Math.PI/6.0;
+        // heights are inverted here; -y axis means go 'up' on the screen
+        ctx.lineTo(triangleHeight*Math.cos(-angle), - triangleHeight*Math.sin(-angle));
+        ctx.lineTo(triangleHeight*Math.cos(Math.PI+angle), - triangleHeight*Math.sin(Math.PI+angle));
+         ctx.closePath();
+         ctx.fillStyle = "red";
+         ctx.fill();
+         ctx.resetTransform();
+      
+    }
+    function drawOrangeSquares(timestamp) {
+        ctx.beginPath();
+        // rotate according to the time
+        ctx.translate(width/2.0, height/2.0);
+        ctx.rotate(Math.PI*2*timestamp/PulseInterval);
+        ctx.moveTo(0, - triangleHeight);
+        // 30 degress in radians
+        var angle = Math.PI/6.0;
+        // heights are inverted here; -y axis means go 'up' on the screen
+        ctx.lineTo(triangleHeight*Math.cos(-angle), - triangleHeight*Math.sin(-angle));
+        ctx.lineTo(triangleHeight*Math.cos(Math.PI+angle), - triangleHeight*Math.sin(Math.PI+angle));
+         ctx.closePath();
+         ctx.fillStyle = "red";
+         ctx.fill();
+         ctx.resetTransform();
+      
+    }
+
+
+
+    var start = null;
+    var breathTimeMs = 5000;
+    var cycleTimeMs = breathTimeMs*4;
+    function drawAll(timestamp) {
+      clearBox();
+      drawRedTriangle(timestamp);
+      requestAnimationFrame(drawAll);
+    }
+
+  window.requestAnimationFrame(drawAll);
+    
+});
+</script>
+</head>
+<body>
+  <canvas id="draw-canvas" width="800" height="800"></canvas>
+</body>
+</html>
+
