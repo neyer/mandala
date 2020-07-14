@@ -15,6 +15,7 @@ $(document).ready(function(){
     var lineSpacing = 5;
     // 7 colors, but some are more bigger than others
     var triangleHeight = height/(2*7*2);
+    var squareSize = triangleHeight;
 
     // overall animation cycle frequency
     var PulseInterval = 4000;
@@ -43,7 +44,7 @@ $(document).ready(function(){
     // and a small number of shapes with large sizes
 
     function clearBox() {
-      ctx.fillStyle = 'rgba(0,0,0,1.0)';
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
       ctx.fillRect(0,0,width,height);
     }
 
@@ -64,22 +65,98 @@ $(document).ready(function(){
          ctx.resetTransform();
       
     }
+
     function drawOrangeSquares(timestamp) {
         ctx.beginPath();
         // rotate according to the time
         ctx.translate(width/2.0, height/2.0);
-        ctx.rotate(Math.PI*2*timestamp/PulseInterval);
-        ctx.moveTo(0, - triangleHeight);
+        ctx.rotate(-Math.PI*2*timestamp/PulseInterval);
+        ctx.moveTo(-squareSize, - squareSize);
         // 30 degress in radians
-        var angle = Math.PI/6.0;
+        ctx.lineTo(squareSize, - squareSize);
+        ctx.lineTo(squareSize, squareSize);
+        ctx.lineTo(-squareSize, squareSize);
+        ctx.closePath();
+        ctx.fillStyle = "rgb(235,131,52)";
+        ctx.fill();
+        ctx.resetTransform();
+    }
+
+    var starburstWidth = triangleHeight/5.0;
+    var starburstHeight= triangleHeight*2.0;
+    var starburstHeightVariance = starburstHeight*0.25;
+    var numBursts = 32
+    function drawYellowStarburst(timestamp) {
+        ctx.beginPath();
+        // rotate according to the time
+        ctx.translate(width/2.0, height/2.0);
+
+        var angle = 2*Math.PI/numBursts;
+        for (var  i = 0; i < numBursts; ++i) {
         // heights are inverted here; -y axis means go 'up' on the screen
-        ctx.lineTo(triangleHeight*Math.cos(-angle), - triangleHeight*Math.sin(-angle));
-        ctx.lineTo(triangleHeight*Math.cos(Math.PI+angle), - triangleHeight*Math.sin(Math.PI+angle));
-         ctx.closePath();
-         ctx.fillStyle = "red";
-         ctx.fill();
-         ctx.resetTransform();
-      
+          ctx.moveTo(-starburstWidth, 0);
+          ctx.lineTo(0, starburstHeight+starburstHeightVariance*(Math.sin(2*Math.PI*timestamp/PulseInterval)));
+          ctx.lineTo(starburstWidth, 0);
+          ctx.closePath();
+          ctx.fillStyle = "yellow";
+          ctx.fill();
+          ctx.rotate(angle);
+        }
+        ctx.resetTransform();
+    }
+
+
+   var earthCoreRadius = triangleHeight*4;
+   function drawBrownCircle(timestamp) {
+        ctx.resetTransform();
+        ctx.translate(width/2.0, height/2.0);
+        ctx.beginPath();
+        ctx.arc(0, 0,  earthCoreRadius, 0, 2*Math.PI);
+        ctx.closePath();
+        ctx.fillStyle = "rgb(122,73,0)";
+        ctx.fill();
+        ctx.resetTransform();
+    }
+
+    var numCircles = 128;
+    var circleOffset = earthCoreRadius;
+    var circleRadius = triangleHeight/2;
+    var circleScales = [];
+    for (var i = 0; i < numCircles; ++i) {
+      circleScales.push(Math.random());
+    }
+    function drawGreenCircles(timestamp) {
+        ctx.beginPath();
+        // rotate according to the time
+        ctx.translate(width/2.0, height/2.0);
+
+        var angle = 2*Math.PI/numBursts;
+        for (var  i = 0; i < numCircles; ++i) {
+        // heights are inverted here; -y axis means go 'up' on the screen
+          var thisPhase =(circleScales[i]+timestamp/PulseInterval)*Math.PI*2;
+          var thisSize = (1+Math.sin(thisPhase));
+          ctx.beginPath();
+          ctx.arc(0, circleOffset, thisSize*circleRadius, 0, 2*Math.PI);
+          ctx.closePath();
+          ctx.fillStyle = "green";
+          ctx.fill();
+          ctx.rotate(angle);
+          // grow this circle
+
+        }
+        ctx.resetTransform();
+    }
+
+   var atmosphereRadius = earthCoreRadius*2;
+   function drawBlueCircle(timestamp) {
+        ctx.resetTransform();
+        ctx.translate(width/2.0, height/2.0);
+        ctx.beginPath();
+        ctx.arc(0, 0,  atmosphereRadius, 0, 2*Math.PI);
+        ctx.closePath();
+        ctx.fillStyle = "skyblue";
+        ctx.fill();
+        ctx.resetTransform();
     }
 
 
@@ -89,7 +166,14 @@ $(document).ready(function(){
     var cycleTimeMs = breathTimeMs*4;
     function drawAll(timestamp) {
       clearBox();
+      // Draw in color-reverse order
+      drawBlueCircle(timestamp);
+      drawGreenCircles(timestamp);
+      drawBrownCircle(timestamp);
+      drawYellowStarburst(timestamp);
+      drawOrangeSquares(timestamp);
       drawRedTriangle(timestamp);
+      //
       requestAnimationFrame(drawAll);
     }
 
