@@ -133,7 +133,7 @@ $(document).ready(function(){
         var angle = 2*Math.PI/numBursts;
         for (var  i = 0; i < numCircles; ++i) {
         // heights are inverted here; -y axis means go 'up' on the screen
-          var thisPhase =(circleScales[i]+timestamp/PulseInterval)*Math.PI*2;
+          var thisPhase =(circleScales[i]+timestamp/(PulseInterval*4))*Math.PI*2;
           var thisSize = (1+Math.sin(thisPhase));
           ctx.beginPath();
           ctx.arc(0, circleOffset, thisSize*circleRadius, 0, 2*Math.PI);
