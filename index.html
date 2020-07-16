@@ -261,23 +261,48 @@ $(document).ready(function(){
         ctx.resetTransform();
     }
 
-    var numCircles = 128;
+    var numTrees = 64;
     var circleOffset = earthCoreRadius*1.1;
-    var circleRadius = triangleHeight/8;
-    var circles = [];
+    var treeRadius = triangleHeight/8;
+    var leavesPerTree = 20;
+    var trees = [];
 
-    for (var i = 0; i < numCircles; ++i) {
-      var treeColorBase = {
-        'r' :38, 'g': 99, 'b': 12
-      }
-      var fudgeColor = function (colorIndex) {
-        var baseNum = treeColorBase[colorIndex];
-        return  (Math.floor((baseNum + (baseNum * 0.2 * Math.random())))).toString();
+    // the trees will start small, then grow, then turn orange, then leaves fall?
+    var treeColorBase = {
+      'r' :38, 'g': 99, 'b': 12
+    }
+    function fudgeColor(base, colorIndex) {
+      var baseNum = base[colorIndex];
+      return  (Math.floor((baseNum + (baseNum * 0.2 * Math.random())))).toString();
+    }
 
+    function makeTreeColor() {
+        return 'rgb('+fudgeColor(treeColorBase, 'r')+','
+                     +fudgeColor(treeColorBase, 'g')+','
+                     +fudgeColor(treeColorBase, 'b')+')';
+    }
+
+    function makeLeaf() {
+      var leafRadius = Math.random()*treeRadius;
+      var leafAngle = Math.random()*Math.PI*2;
+      return {
+        'color': makeTreeColor(),
+        'pos': [ leafRadius*Math.cos(leafAngle), leafRadius*Math.sin(leafAngle)]
+      };
+    }
+    function makeLeafList (numLeaves) {
+      var result = [];
+      for (var  i =0; i < numLeaves; ++i) {
+          result.push(makeLeaf());
       }
-      circles.push({
+      return result;
+    }
+
+    for (var i = 0; i < numTrees; ++i) {
+          trees.push({
+        'leaves': makeLeafList(leavesPerTree),
         'phase': Math.random(),
-        'color': ('rgb('+fudgeColor('r')+','+fudgeColor('g')+','+fudgeColor('b')+')')
+        'color': makeTreeColor()
       });
     }
     function drawGreenCircles(timestamp) {
@@ -285,19 +310,23 @@ $(document).ready(function(){
         // rotate according to the time
         ctx.translate(CanvasWidth/2.0, CanvasHeight/2.0);
 
-        var angle = 2*Math.PI/numBursts;
-        for (var  i = 0; i < numCircles; ++i) {
+        var angle = 2*Math.PI/numTrees;
+        for (var  i = 0; i < numTrees; ++i) {
         // CanvasHeights are inverted here; -y axis means go 'up' on the screen
-          var thisCircle = circles[i];
-          var thisPhase =(thisCircle.phase+timestamp/(PulseInterval*4))*Math.PI*2;
-          var thisSize = (1+Math.sin(thisPhase));
-          ctx.beginPath();
-          ctx.arc(0, circleOffset, thisSize*circleRadius, 0, 2*Math.PI);
-          ctx.closePath();
-          ctx.fillStyle = thisCircle.color;
-          ctx.fill();
-          ctx.rotate(angle);
-          // grow this circle
+          var thisTree= trees[i];
+          for (var leafNo = 0; leafNo < thisTree.leaves.length; ++ leafNo) {
+            var thisLeaf = thisTree.leaves[leafNo];
+            ctx.beginPath();
+            ctx.arc(0+thisLeaf.pos[0], 
+                    circleOffset+thisLeaf.pos[1], 
+                    2, 0, 2*Math.PI);
+            ctx.closePath();
+            ctx.fillStyle = thisLeaf.color;
+            ctx.fill();
+
+          }
+          // draw the next tree
+           ctx.rotate(angle);
 
         }
         ctx.resetTransform();
@@ -307,7 +336,7 @@ $(document).ready(function(){
    var purpleOuterFringeColor = "rgba(48,3,252,0.2)";
    function drawBlueCircle(timestamp) {
         var grd = ctx.createRadialGradient(0,0, earthCoreRadius, 0,0, atmosphereRadius);
-        grd.addColorStop(0, "skyblue");
+        grd.addColorStop(0, "#87ceeb");
         grd.addColorStop(1, purpleOuterFringeColor);
 
         ctx.resetTransform();
