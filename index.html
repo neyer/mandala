@@ -262,9 +262,10 @@ $(document).ready(function(){
     }
 
     var numTrees = 64;
-    var circleOffset = earthCoreRadius*1.1;
-    var treeRadius = triangleHeight/8;
-    var leavesPerTree = 20;
+    var trunkTop = earthCoreRadius*1.1;
+    var treeRadius = triangleHeight/6;
+    var leavesPerTree = 30;
+    var leafDrawRadius = 4;
     var trees = [];
 
     // the trees will start small, then grow, then turn orange, then leaves fall?
@@ -290,22 +291,32 @@ $(document).ready(function(){
         'pos': [ leafRadius*Math.cos(leafAngle), leafRadius*Math.sin(leafAngle)]
       };
     }
-    function makeLeafList (numLeaves) {
-      var result = [];
-      for (var  i =0; i < numLeaves; ++i) {
-          result.push(makeLeaf());
-      }
-      return result;
-    }
 
     for (var i = 0; i < numTrees; ++i) {
+         var targetTrunkLength = (trunkTop - earthCoreRadius);
           trees.push({
-        'leaves': makeLeafList(leavesPerTree),
-        'phase': Math.random(),
-        'color': makeTreeColor()
+        'leaves': [],
+        'targetTrunkLength' : targetTrunkLength,
+        'targetNumLeaves' : leavesPerTree,
+        'trunkLength': Math.random() * targetTrunkLength,
+        'leafGap': 100,
+        'lastLeaf': 0,
+        'lastUpdate': 0
       });
     }
-    function drawGreenCircles(timestamp) {
+    function updateTree(tree, timestamp) {
+        var deltaT = timestamp - tree.lastUpdate;
+        if (tree.trunkLength < tree.targetTrunkLength) {
+          tree.trunkLength = Math.min(tree.trunkLength + deltaT/500.0,
+               tree.targetTrunkLength);
+        } else  if (tree.leaves.length < tree.targetNumLeaves && 
+            tree.lastLeaf + tree.leafGap < timestamp) {
+            tree.leaves.push(makeLeaf());
+            tree.lastLeaf = timestamp;
+        }
+        tree.lastUpdate = timestamp;
+    }
+    function drawTrees(timestamp) {
         ctx.beginPath();
         // rotate according to the time
         ctx.translate(CanvasWidth/2.0, CanvasHeight/2.0);
@@ -313,13 +324,26 @@ $(document).ready(function(){
         var angle = 2*Math.PI/numTrees;
         for (var  i = 0; i < numTrees; ++i) {
         // CanvasHeights are inverted here; -y axis means go 'up' on the screen
+          
           var thisTree= trees[i];
+          updateTree(thisTree, timestamp);
+          // draw the tree trunk.
+          ctx.beginPath();
+          ctx.moveTo(0,earthCoreRadius);
+          ctx.lineTo(0,earthCoreRadius + thisTree.trunkLength);
+          ctx.closePath();
+          ctx.strokeStyle = "brown";
+          ctx.strokeWidth = '2px';
+          ctx.stroke();
+          // then draw the leaves;
+
           for (var leafNo = 0; leafNo < thisTree.leaves.length; ++ leafNo) {
             var thisLeaf = thisTree.leaves[leafNo];
             ctx.beginPath();
             ctx.arc(0+thisLeaf.pos[0], 
-                    circleOffset+thisLeaf.pos[1], 
-                    2, 0, 2*Math.PI);
+                    trunkTop+thisLeaf.pos[1], 
+                    leafDrawRadius,
+                     0, 2*Math.PI);
             ctx.closePath();
             ctx.fillStyle = thisLeaf.color;
             ctx.fill();
@@ -399,7 +423,7 @@ $(document).ready(function(){
       drawStars(timestamp);
       drawPurpleCircle(timestamp);
       drawBlueCircle(timestamp);
-      drawGreenCircles(timestamp);
+      drawTrees(timestamp);
       drawBrownCircle(timestamp);
       drawYellowStarburst(timestamp);
       drawOrangeSquares(timestamp);
