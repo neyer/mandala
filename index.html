@@ -15,7 +15,6 @@ $(document).ready(function(){
     var lineSpacing = 5;
     // 7 colors, but some are more bigger than others
     var triangleHeight = CanvasHeight/(2*7*2);
-    var squareSize = triangleHeight;
 
     // overall animation cycle frequency
     var PulseInterval = 4000;
@@ -44,7 +43,7 @@ $(document).ready(function(){
     // and a small number of shapes with large sizes
 
     function clearBox() {
-      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.fillStyle = 'rgba(0,0,0,1)';
       ctx.fillRect(0,0,CanvasWidth,CanvasHeight);
     }
 
@@ -60,45 +59,138 @@ $(document).ready(function(){
         ctx.lineTo(triangleHeight*Math.cos(-angle), - triangleHeight*Math.sin(-angle));
         ctx.lineTo(triangleHeight*Math.cos(Math.PI+angle), - triangleHeight*Math.sin(Math.PI+angle));
          ctx.closePath();
-         ctx.fillStyle = "red";
+         ctx.fillStyle = "rgba(255,0,0,.5)";
          ctx.fill();
          ctx.resetTransform();
       
     }
 
+
+    // Orange Squares moving around the points of a triangle
+    var squareSize = triangleHeight/2;
+
+    var UP = 0, RIGHT = 1, DOWN = 2, LEFT = 3;
+    var squares = [
+    ]
+
+    function addSquaresAtScale(scale) {
+      squares.push(
+      {
+        'pos' :[-squareSize, -squareSize],
+        'size' : squareSize*scale,
+        'range' : squareSize*1.1,
+        'dir': RIGHT,
+        'lastUpdateTicks' : 0,
+        'moveSpeed' : squareSize/scale,
+      });
+      squares.push({
+        'pos' :[squareSize, -squareSize],
+        'size' : squareSize*scale,
+        'range' : squareSize*1.1,
+        'dir': DOWN,
+        'lastUpdateTicks' : 0,
+        'moveSpeed' : squareSize/scale,
+      });
+      squares.push({
+        'pos' :[squareSize, squareSize],
+        'size' : squareSize*scale,
+        'range' : squareSize*1.1,
+        'dir': LEFT,
+        'lastUpdateTicks' : 0,
+        'moveSpeed' : squareSize/scale,
+      });
+      squares.push({
+        'pos' :[-squareSize, squareSize],
+        'size' : squareSize*scale,
+        'range' : squareSize*1.1,
+        'dir': UP,
+        'lastUpdateTicks' : 0,
+        'moveSpeed' : squareSize/scale,
+      });
+    }
+
+    addSquaresAtScale(1.0);
+    addSquaresAtScale(3.0/4.0);
+    addSquaresAtScale(9.0/16.0);
+    addSquaresAtScale(81.0/256.0);
+    addSquaresAtScale(6561.0/65536.0);
+
+    function updateSquare(square, timestamp) {
+     var deltaT = timestamp - square.lastUpdateTicks;
+       switch (square.dir) {
+          case UP:
+            square.pos[1] = square.pos[1]-square.moveSpeed*(deltaT/1000);
+            if (square.pos[1] < -square.range) {
+              square.pos[1] = -square.range;
+              square.dir = RIGHT;
+            }
+
+            break;
+          case RIGHT:
+            square.pos[0] = square.pos[0]+square.moveSpeed*(deltaT/1000);
+            if (square.pos[0] > square.range) {
+              square.pos[0] = square.range;
+              square.dir = DOWN;
+            }
+            break;
+          case DOWN:
+            square.pos[1] = square.pos[1]+square.moveSpeed*(deltaT/1000);
+            if (square.pos[1] > square.range) {
+              square.pos[1] = square.range;
+              square.dir = LEFT;
+            }
+            break;
+          case LEFT:
+            square.pos[0] = square.pos[0]-square.moveSpeed*(deltaT/1000);
+            if (square.pos[0] < -square.range) {
+              square.pos[0] = -square.range;
+              square.dir = UP;
+            }
+            break;
+        };
+        square.lastUpdateTicks = timestamp;
+
+    }
+    
     function drawOrangeSquares(timestamp) {
-        ctx.beginPath();
+        ctx.resetTransform();
         // rotate according to the time
-        ctx.translate(CanvasWidth/2.0, CanvasHeight/2.0);
-        ctx.rotate(-Math.PI*2*timestamp/PulseInterval);
-        ctx.moveTo(-squareSize, - squareSize);
-        // 30 degress in radians
-        ctx.lineTo(squareSize, - squareSize);
-        ctx.lineTo(squareSize, squareSize);
-        ctx.lineTo(-squareSize, squareSize);
+        //ctx.rotate(-Math.PI*2*timestamp/PulseInterval);
+        for (var squareNum = 0; squareNum < squares.length; ++squareNum) {
+        var square = squares[squareNum];
+        ctx.translate(CanvasWidth/2.0+square.pos[0], CanvasHeight/2.0+square.pos[1]);
+        updateSquare(square, timestamp);
+        // now move the square a long 
+        ctx.beginPath();
+        ctx.moveTo(-square.size, - square.size);
+        ctx.lineTo(square.size, - square.size);
+        ctx.lineTo(square.size, square.size);
+        ctx.lineTo(-square.size, square.size);
         ctx.closePath();
-        ctx.fillStyle = "rgb(252,107,3)";
+        ctx.fillStyle = "rgba(252,107,3,0.6)";
         ctx.fill();
         ctx.resetTransform();
+      }
     }
 
     var starburstWidth = triangleHeight/5.0;
-    var starburstHeight= triangleHeight*2.0;
-    var starburstHeightVariance = starburstHeight*0.25;
+    var starburstHeight= triangleHeight*2.5;
+    var starburstHeightVariance = starburstHeight*0.125;
     var numBursts = 32
     function drawYellowStarburst(timestamp) {
-        ctx.beginPath();
         // rotate according to the time
         ctx.translate(CanvasWidth/2.0, CanvasHeight/2.0);
 
         var angle = 2*Math.PI/numBursts;
         for (var  i = 0; i < numBursts; ++i) {
         // CanvasHeights are inverted here; -y axis means go 'up' on the screen
+
+          ctx.beginPath();
           ctx.moveTo(-starburstWidth, 0);
           ctx.lineTo(0, starburstHeight+starburstHeightVariance*(Math.sin(2*Math.PI*timestamp/PulseInterval)));
           ctx.lineTo(starburstWidth, 0);
           ctx.closePath();
-          ctx.fillStyle = "yellow";
+          ctx.fillStyle = "rgba(248,252,3,0.8)";
           ctx.fill();
           ctx.rotate(angle);
         }
@@ -108,22 +200,40 @@ $(document).ready(function(){
 
    var earthCoreRadius = triangleHeight*4;
    function drawBrownCircle(timestamp) {
+         var grd = ctx.createRadialGradient(0,0, 0, 0,0, earthCoreRadius);
+        //grd.addColorStop(0, "rgb(105,65,27)");
+        grd.addColorStop(0, "rgb(50,0,0)");
+        grd.addColorStop(1, "rgb(105,65,27");
+
+
         ctx.resetTransform();
         ctx.translate(CanvasWidth/2.0, CanvasHeight/2.0);
         ctx.beginPath();
         ctx.arc(0, 0,  earthCoreRadius, 0, 2*Math.PI);
         ctx.closePath();
-        ctx.fillStyle = "rgb(122,73,0)";
+        ctx.fillStyle = grd;
         ctx.fill();
         ctx.resetTransform();
     }
 
     var numCircles = 128;
-    var circleOffset = earthCoreRadius;
-    var circleRadius = triangleHeight/2;
-    var circleScales = [];
+    var circleOffset = earthCoreRadius*1.1;
+    var circleRadius = triangleHeight/4;
+    var circles = [];
+
     for (var i = 0; i < numCircles; ++i) {
-      circleScales.push(Math.random());
+      var treeColorBase = {
+        'r' :38, 'g': 99, 'b': 12
+      }
+      var fudgeColor = function (colorIndex) {
+        var baseNum = treeColorBase[colorIndex];
+        return  (Math.floor((baseNum + (baseNum * 0.2 * Math.random())))).toString();
+
+      }
+      circles.push({
+        'phase': Math.random(),
+        'color': ('rgb('+fudgeColor('r')+','+fudgeColor('g')+','+fudgeColor('b')+')')
+      });
     }
     function drawGreenCircles(timestamp) {
         ctx.beginPath();
@@ -133,12 +243,13 @@ $(document).ready(function(){
         var angle = 2*Math.PI/numBursts;
         for (var  i = 0; i < numCircles; ++i) {
         // CanvasHeights are inverted here; -y axis means go 'up' on the screen
-          var thisPhase =(circleScales[i]+timestamp/(PulseInterval*4))*Math.PI*2;
+          var thisCircle = circles[i];
+          var thisPhase =(thisCircle.phase+timestamp/(PulseInterval*4))*Math.PI*2;
           var thisSize = (1+Math.sin(thisPhase));
           ctx.beginPath();
           ctx.arc(0, circleOffset, thisSize*circleRadius, 0, 2*Math.PI);
           ctx.closePath();
-          ctx.fillStyle = "green";
+          ctx.fillStyle = thisCircle.color;
           ctx.fill();
           ctx.rotate(angle);
           // grow this circle
@@ -148,10 +259,11 @@ $(document).ready(function(){
     }
 
    var atmosphereRadius = earthCoreRadius*2;
+   var purpleOuterFringeColor = "rgba(48,3,252,0.2)";
    function drawBlueCircle(timestamp) {
         var grd = ctx.createRadialGradient(0,0, earthCoreRadius, 0,0, atmosphereRadius);
         grd.addColorStop(0, "skyblue");
-        grd.addColorStop(1, "purple");
+        grd.addColorStop(1, purpleOuterFringeColor);
 
         ctx.resetTransform();
         ctx.translate(CanvasWidth/2.0, CanvasHeight/2.0);
@@ -167,7 +279,7 @@ $(document).ready(function(){
    var exosphereRadius = atmosphereRadius*1.1;
    function drawPurpleCircle(timestamp) {
         var grd = ctx.createRadialGradient(0,0, atmosphereRadius, 0,0, exosphereRadius);
-        grd.addColorStop(0, "purple");
+        grd.addColorStop(0, purpleOuterFringeColor);
         grd.addColorStop(1, "black");
         
         // Fill with gradient
@@ -209,7 +321,6 @@ $(document).ready(function(){
     var breathTimeMs = 5000;
     var cycleTimeMs = breathTimeMs*4;
     function drawAll(timestamp) {
-      clearBox();
       // Draw in color-reverse order
       drawStars(timestamp);
       drawPurpleCircle(timestamp);
@@ -223,6 +334,7 @@ $(document).ready(function(){
       requestAnimationFrame(drawAll);
     }
 
+  clearBox();
   window.requestAnimationFrame(drawAll);
     
 });
