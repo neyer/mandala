@@ -287,21 +287,26 @@ $(document).ready(function(){
                      +fudgeColor(base, 'b')+')';
     }
 
-    function makeLeaf() {
-      var leafRadius = Math.random()*treeRadius;
-      var leafAngle = Math.random()*Math.PI*2;
+    function makeLeaf(leafNum, isRound) {
+      var leavesPerLayer = (leavesPerTree/2);
+      var leafRadius = (Math.random() - 0.5)*treeRadius/4 + leafNum < leavesPerLayer ? treeRadius : treeRadius/2;
+      var leafAngle = Math.PI*2*(leafNum % (leavesPerLayer)) / leavesPerLayer
       return {
         'color': makeColorFromBase(leafGreenColorBase),
         'pos': [ leafRadius*Math.cos(leafAngle), leafRadius*Math.sin(leafAngle)],
         'isGreen': true,
         'hasFallen': false,
-        'dead': false
+        'dead': false,
+        'isRound': isRound
+        
       };
     }
     var TRUNK_GROWING = 0, LEAVES_GROWING = 1, LEAVES_TURNING = 2, LEAVES_FALLING = 3;
 
-    function makeTree() {
-       var targetTrunkLength = (trunkTop - earthCoreRadius);
+    function makeTree(latitude) {
+      var targetTrunkLength = (trunkTop - earthCoreRadius);
+      var hasRoundLeaves = (latitude > 0.4 && latitude < 0.9);
+      var isEvergreen = latitude > 0.9;
        var thisTree = {
         'leaves': [],
         'targetTrunkLength' : targetTrunkLength,
@@ -311,24 +316,50 @@ $(document).ready(function(){
         'lastLeaf': 0,
         'lastUpdate': 0,
         'affectievAngle': 0,
-        'state': LEAVES_GROWING
+        'state': LEAVES_GROWING,
+        'hasRoundLeaves': hasRoundLeaves,
+        'isEvergreen' : isEvergreen
       };
       for (var leafNum = 0; leafNum < leavesPerTree; ++leafNum) {
-        thisTree.leaves.push(makeLeaf());
+        if (!isEvergreen) {
+          thisTree.leaves.push(makeLeaf(leafNum, hasRoundLeaves));
+        } else {
+          // evergreen leaves go up the tree from the base
+          // random value of x with decreasing magnitude
+          var thisLeafHeight = targetTrunkLength*(leafNum/leavesPerTree);
+          thisTree.leaves.push({
+            'color': makeColorFromBase(leafGreenColorBase),
+            'pos': [ (thisLeafHeight/2) , thisLeafHeight],
+            'isGreen': true,
+            'hasFallen': false,
+            'dead': false,
+            'isRound':false
+          });
+        }
       }
       return thisTree;
     }
 
 
+    var anglePerTree = 2*Math.PI/numTrees;
     for (var i = 0; i < numTrees; ++i) {
          var targetTrunkLength = (trunkTop - earthCoreRadius);
-        trees.push(makeTree());
+
+        var currentLatitude = Math.abs(Math.cos(anglePerTree*i));
+        trees.push(makeTree(currentLatitude));
     }
     function updateTree(tree, timestamp) {
          // Angle of 0 points straight  up
-         if (Math.abs(Math.cos(tree.effectiveAngle)) > 0.8) {
-            tree.state = LEAVES_TURNING;
+        var currentLatitude = Math.abs(Math.cos(tree.effectiveAngle));
+        if (tree.hasRoundLeaves && currentLatitude > 0.7) {
+            if (tree.state == LEAVES_GROWING) {
+              tree.state = LEAVES_TURNING;
+            } else {  
+              console.log("tree state is ", tree.state);
+            }
          } else {
+            // evergreens are always green; deciduous trees grow when latitude
+            // gets low enough
             tree.state = LEAVES_GROWING;
         }
         
@@ -366,10 +397,12 @@ $(document).ready(function(){
             var foundOne = false;
             tree.leaves.forEach(function (leaf, leafIndex) {
                 var leaf = tree.leaves[leafIndex];
-                if (tree.leaves[leafIndex].hasFallen) {
-                    leaf.pos[1] = leaf.pos[1] - deltaT/10;
+                if (leaf.hasFallen) {
+                    leaf.pos[1] = leaf.pos[1] - deltaT/20;
                     if (leaf.pos[1] < -(tree.trunkLength+treeRadius)) {
-                      leaf.dead = true;
+                      //leaf.dead = true;
+                    } else {
+                       foo = 1;
                     }
                 } else {
                   leaf.hasFallen = true;
@@ -378,10 +411,6 @@ $(document).ready(function(){
                 }
                ++leafIndex;
             });
-            if (!foundOne) {
-              tree.leaves = [];
-              tree.state = LEAVES_GROWING;
-            }
           }
 
           tree.lastLeaf = timestamp;
@@ -398,11 +427,10 @@ $(document).ready(function(){
         ctx.translate(CanvasWidth/2.0, CanvasHeight/2.0);
         ctx.rotate(seasonAngle);
 
-        var angle = 2*Math.PI/numTrees;
         trees.forEach(function (tree, treeNo) {
         // CanvasHeights are inverted here; -y axis means go 'up' on the screen
           
-          tree.effectiveAngle = (seasonAngle + angle*treeNo);
+          tree.effectiveAngle = (seasonAngle + anglePerTree*treeNo);
           updateTree(tree, timestamp);
           // draw the tree trunk.
           ctx.beginPath();
@@ -418,18 +446,38 @@ $(document).ready(function(){
             if (leaf.dead) {
                 return;
             }
-            ctx.beginPath();
-            ctx.arc(0+leaf.pos[0], 
-                    trunkTop+leaf.pos[1], 
-                    leafDrawRadius,
-                     0, 2*Math.PI);
-            ctx.closePath();
-            ctx.fillStyle = leaf.color;
-            ctx.fill();
+            if (leaf.isRound) {
+              ctx.beginPath();
+              ctx.arc(0+leaf.pos[0], 
+                      trunkTop+leaf.pos[1], 
+                      leafDrawRadius,
+                       0, 2*Math.PI);
+              ctx.closePath();
+              ctx.fillStyle = leaf.color;
+              ctx.fill();
+          } else if(tree.isEvergreen) {
+              ctx.beginPath();
+              ctx.moveTo(-leaf.pos[0], trunkTop-leaf.pos[1]);
+              ctx.lineTo(leaf.pos[0], trunkTop-leaf.pos[1]); 
+              ctx.closePath();
+              ctx.strokeStyle = leaf.color;
+              ctx.strokeWidth = '2px';
+              ctx.stroke();
+          } else {
+              ctx.beginPath();
+              ctx.moveTo(0, trunkTop);
+              ctx.lineTo(0+leaf.pos[0], 
+                      trunkTop+leaf.pos[1]); 
+              ctx.closePath();
+              ctx.strokeStyle = leaf.color;
+              ctx.strokeWidth = '2px';
+              ctx.stroke();
+
+          } 
 
           });
           // draw the next tree
-           ctx.rotate(angle);
+           ctx.rotate(anglePerTree);
 
         });
         ctx.resetTransform();
