@@ -264,55 +264,118 @@ $(document).ready(function(){
     var numTrees = 64;
     var trunkTop = earthCoreRadius*1.2;
     var treeRadius = triangleHeight/4;
-    var leavesPerTree = 40;
+    var leavesPerTree = 20;
     var leafDrawRadius = 4;
     var trees = [];
 
     // the trees will start small, then grow, then turn orange, then leaves fall?
-    var treeColorBase = {
+    var leafGreenColorBase = {
       'r' :38, 'g': 99, 'b': 12
-    }
+    };
+    var leafOrangeColorBase = {
+      'r': 252, 'g': 107, 'b': 3
+    };
+
     function fudgeColor(base, colorIndex) {
       var baseNum = base[colorIndex];
       return  (Math.floor((baseNum + (baseNum * 0.2 * Math.random())))).toString();
     }
 
-    function makeTreeColor() {
-        return 'rgb('+fudgeColor(treeColorBase, 'r')+','
-                     +fudgeColor(treeColorBase, 'g')+','
-                     +fudgeColor(treeColorBase, 'b')+')';
+    function makeColorFromBase(base) {
+        return 'rgb('+fudgeColor(base, 'r')+','
+                     +fudgeColor(base, 'g')+','
+                     +fudgeColor(base, 'b')+')';
     }
 
     function makeLeaf() {
       var leafRadius = Math.random()*treeRadius;
       var leafAngle = Math.random()*Math.PI*2;
       return {
-        'color': makeTreeColor(),
-        'pos': [ leafRadius*Math.cos(leafAngle), leafRadius*Math.sin(leafAngle)]
+        'color': makeColorFromBase(leafGreenColorBase),
+        'pos': [ leafRadius*Math.cos(leafAngle), leafRadius*Math.sin(leafAngle)],
+        'isGreen': true,
+        'hasFallen': false,
+        'dead': false
       };
     }
+    var TRUNK_GROWING = 0, LEAVES_GROWING = 1, LEAVES_TURNING = 2, LEAVES_FALLING = 3;
 
-    for (var i = 0; i < numTrees; ++i) {
-         var targetTrunkLength = (trunkTop - earthCoreRadius);
-          trees.push({
+    function makeTree() {
+       var targetTrunkLength = (trunkTop - earthCoreRadius);
+        return{
         'leaves': [],
         'targetTrunkLength' : targetTrunkLength,
         'targetNumLeaves' : leavesPerTree,
         'trunkLength': Math.random() * targetTrunkLength,
-        'leafGap': 100,
+        'leafGap': 50,
         'lastLeaf': 0,
-        'lastUpdate': 0
-      });
+        'lastUpdate': 0,
+        'state': TRUNK_GROWING
+      };
+    }
+
+
+    for (var i = 0; i < numTrees; ++i) {
+         var targetTrunkLength = (trunkTop - earthCoreRadius);
+        trees.push(makeTree());
     }
     function updateTree(tree, timestamp) {
         var deltaT = timestamp - tree.lastUpdate;
-        if (tree.trunkLength < tree.targetTrunkLength) {
-          tree.trunkLength = Math.min(tree.trunkLength + deltaT/500.0,
-               tree.targetTrunkLength);
-        } else  if (tree.leaves.length < tree.targetNumLeaves && 
-            tree.lastLeaf + tree.leafGap < timestamp) {
-            tree.leaves.push(makeLeaf());
-            tree.lastLeaf = timestamp;
+        if (tree.state == TRUNK_GROWING) {
+          if (tree.trunkLength < tree.targetTrunkLength) {
+            tree.trunkLength = Math.min(tree.trunkLength + deltaT/500.0,
+                 tree.targetTrunkLength);
+          }  else {
+              tree.state = LEAVES_GROWING;
+          }
+        }
+        // don't update all leaves each frame
+        if (tree.lastLeaf + tree.leafGap < timestamp) {
+          if (tree.state == LEAVES_GROWING) {
+            if (tree.leaves.length < tree.targetNumLeaves) {
+              tree.leaves.push(makeLeaf());
+          // eventually  change to a notion of seasons
+            } else {
+            tree.state = LEAVES_TURNING;
+           }
+        } else if (tree.state == LEAVES_TURNING) {
+            // find the oldest non-green leaf and make it orange
+            var foundOne = false;
+            tree.leaves.forEach(function (leaf, leafIndex) {
+                if (!foundOne && leaf.isGreen) {
+                  leaf.color  = makeColorFromBase(leafOrangeColorBase);
+                  leaf.isGreen = false;
+                  foundOne = true;
+                }
+               ++leafIndex;
+            });
+            if (!foundOne) {
+              tree.state = LEAVES_FALLING;
+            }
+          } else if (tree.state == LEAVES_FALLING ) {
+            var leafIndex = 0;
+            // find the oldest non-fallen leaf and make it fall 
+            var foundOne = false;
+            while (leafIndex < tree.leaves.length) {
+                var leaf = tree.leaves[leafIndex];
+                if (tree.leaves[leafIndex].hasFallen) {
+                    leaf.pos[1] = leaf.pos[1] - deltaT/10;
+                    if (leaf.pos[1] < -(tree.trunkLength+treeRadius)) {
+                      leaf.dead = true;
+                    }
+                } else {
+                  leaf.hasFallen = true;
+                  foundOne = true;
+                  break;
+                }
+               ++leafIndex;
+            }
+            if (!foundOne) {
+              tree.state = LEAVES_GROWING;
+            }
+          }
+
+          tree.lastLeaf = timestamp;
         }
         tree.lastUpdate = timestamp;
     }
@@ -337,8 +400,11 @@ $(document).ready(function(){
           ctx.stroke();
           // then draw the leaves;
 
-          for (var leafNo = 0; leafNo < thisTree.leaves.length; ++ leafNo) {
+          thisTree.leaves.forEach(function(leaf, leafNo) {
             var thisLeaf = thisTree.leaves[leafNo];
+            if (thisLeaf.dead) {
+                return;
+            }
             ctx.beginPath();
             ctx.arc(0+thisLeaf.pos[0], 
                     trunkTop+thisLeaf.pos[1], 
@@ -348,7 +414,7 @@ $(document).ready(function(){
             ctx.fillStyle = thisLeaf.color;
             ctx.fill();
 
-          }
+          });
           // draw the next tree
            ctx.rotate(angle);
 
