@@ -302,16 +302,21 @@ $(document).ready(function(){
 
     function makeTree() {
        var targetTrunkLength = (trunkTop - earthCoreRadius);
-        return{
+       var thisTree = {
         'leaves': [],
         'targetTrunkLength' : targetTrunkLength,
         'targetNumLeaves' : leavesPerTree,
-        'trunkLength': Math.random() * targetTrunkLength,
+        'trunkLength': targetTrunkLength,
         'leafGap': 50,
         'lastLeaf': 0,
         'lastUpdate': 0,
-        'state': TRUNK_GROWING
+        'affectievAngle': 0,
+        'state': LEAVES_GROWING
       };
+      for (var leafNum = 0; leafNum < leavesPerTree; ++leafNum) {
+        thisTree.leaves.push(makeLeaf());
+      }
+      return thisTree;
     }
 
 
@@ -321,23 +326,27 @@ $(document).ready(function(){
     }
     function updateTree(tree, timestamp) {
         var deltaT = timestamp - tree.lastUpdate;
-        if (tree.state == TRUNK_GROWING) {
-          if (tree.trunkLength < tree.targetTrunkLength) {
-            tree.trunkLength = Math.min(tree.trunkLength + deltaT/500.0,
-                 tree.targetTrunkLength);
-          }  else {
-              tree.state = LEAVES_GROWING;
-          }
+         // Angle of 0 points straight  up
+         if (Math.abs(Math.cos(tree.effectiveAngle)) > 0.6) {
+            tree.state = LEAVES_TURNING;
+         } else {
+            tree.state = LEAVES_GROWING;
         }
+        
         // don't update all leaves each frame
         if (tree.lastLeaf + tree.leafGap < timestamp) {
           if (tree.state == LEAVES_GROWING) {
-            if (tree.leaves.length < tree.targetNumLeaves) {
-              tree.leaves.push(makeLeaf());
-          // eventually  change to a notion of seasons
-            } else {
-            tree.state = LEAVES_TURNING;
-           }
+            var foundOne = false;
+            tree.leaves.forEach(function (leaf, leafIndex) {
+                if (!foundOne && !leaf.isGreen) {
+                  leaf.color  = makeColorFromBase(leafGreenColorBase);
+                  leaf.isGreen = true;
+                  leaf.isDead = false;
+                  foundOne = true;
+                }
+               ++leafIndex;
+            });
+          
         } else if (tree.state == LEAVES_TURNING) {
             // find the oldest non-green leaf and make it orange
             var foundOne = false;
@@ -356,7 +365,7 @@ $(document).ready(function(){
             var leafIndex = 0;
             // find the oldest non-fallen leaf and make it fall 
             var foundOne = false;
-            while (leafIndex < tree.leaves.length) {
+            tree.leaves.forEach(function (leaf, leafIndex) {
                 var leaf = tree.leaves[leafIndex];
                 if (tree.leaves[leafIndex].hasFallen) {
                     leaf.pos[1] = leaf.pos[1] - deltaT/10;
@@ -366,11 +375,12 @@ $(document).ready(function(){
                 } else {
                   leaf.hasFallen = true;
                   foundOne = true;
-                  break;
+                 return
                 }
                ++leafIndex;
-            }
+            });
             if (!foundOne) {
+              tree.leaves = [];
               tree.state = LEAVES_GROWING;
             }
           }
@@ -379,46 +389,50 @@ $(document).ready(function(){
         }
         tree.lastUpdate = timestamp;
     }
+    
+    var seasonAngle = 0;
     function drawTrees(timestamp) {
         ctx.beginPath();
         // rotate according to the time
+
+        seasonAngle = Math.sin(Math.PI*2*timestamp/(PulseInterval*8))*Math.PI/18;
         ctx.translate(CanvasWidth/2.0, CanvasHeight/2.0);
+        ctx.rotate(seasonAngle);
 
         var angle = 2*Math.PI/numTrees;
-        for (var  i = 0; i < numTrees; ++i) {
+        trees.forEach(function (tree, treeNo) {
         // CanvasHeights are inverted here; -y axis means go 'up' on the screen
           
-          var thisTree= trees[i];
-          updateTree(thisTree, timestamp);
+          tree.effectiveAngle = (seasonAngle + angle*treeNo);
+          updateTree(tree, timestamp);
           // draw the tree trunk.
           ctx.beginPath();
           ctx.moveTo(0,earthCoreRadius);
-          ctx.lineTo(0,earthCoreRadius + thisTree.trunkLength);
+          ctx.lineTo(0,earthCoreRadius + tree.trunkLength);
           ctx.closePath();
           ctx.strokeStyle = "brown";
           ctx.strokeWidth = '2px';
           ctx.stroke();
           // then draw the leaves;
 
-          thisTree.leaves.forEach(function(leaf, leafNo) {
-            var thisLeaf = thisTree.leaves[leafNo];
-            if (thisLeaf.dead) {
+          tree.leaves.forEach(function(leaf, leafNo) {
+            if (leaf.dead) {
                 return;
             }
             ctx.beginPath();
-            ctx.arc(0+thisLeaf.pos[0], 
-                    trunkTop+thisLeaf.pos[1], 
+            ctx.arc(0+leaf.pos[0], 
+                    trunkTop+leaf.pos[1], 
                     leafDrawRadius,
                      0, 2*Math.PI);
             ctx.closePath();
-            ctx.fillStyle = thisLeaf.color;
+            ctx.fillStyle = leaf.color;
             ctx.fill();
 
           });
           // draw the next tree
            ctx.rotate(angle);
 
-        }
+        });
         ctx.resetTransform();
     }
 
