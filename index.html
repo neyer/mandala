@@ -48,7 +48,7 @@ $(document).ready(function(){
     }
 
     var triangleHeight = CanvasHeight/(7*2);
-    var triangleColor = "rgba(255,0,0,0.1)";
+    var triangleColor = "rgba(255,0,0,0.3)";
     function drawRedTriangle(timestamp) {
         // rotate according to the time
       // first clockwise triangle
@@ -94,11 +94,13 @@ $(document).ready(function(){
 
     function addSquaresAtScale(scale) {
       var alpha = Math.min(1-0.5*scale, 1);
+      var luminance = (50+30*scale/8);
+      var color = "hsla(25, 98,"+luminance+","+alpha+")";
       squares.push(
       {
         'pos' :[-squareSize, -squareSize],
         'size' : squareSize*scale,
-        'alpha': alpha,
+        'color': color,
         'range' : squareSize*1.1,
         'dir': RIGHT,
         'lastUpdateTicks' : 0,
@@ -107,7 +109,7 @@ $(document).ready(function(){
       squares.push({
         'pos' :[squareSize, -squareSize],
         'size' : squareSize*scale,
-        'alpha': alpha,
+        'color': color,
         'range' : squareSize*1.1,
         'dir': DOWN,
         'lastUpdateTicks' : 0,
@@ -116,7 +118,7 @@ $(document).ready(function(){
       squares.push({
         'pos' :[squareSize, squareSize],
         'size' : squareSize*scale,
-        'alpha': alpha,
+        'color': color,
         'range' : squareSize*1.1,
         'dir': LEFT,
         'lastUpdateTicks' : 0,
@@ -125,7 +127,7 @@ $(document).ready(function(){
       squares.push({
         'pos' :[-squareSize, squareSize],
         'size' : squareSize*scale,
-        'alpha': alpha,
+        'color': color,
         'range' : squareSize*1.1,
         'dir': UP,
         'lastUpdateTicks' : 0,
@@ -191,13 +193,13 @@ $(document).ready(function(){
         ctx.lineTo(square.size, square.size);
         ctx.lineTo(-square.size, square.size);
         ctx.closePath();
-        ctx.fillStyle = "rgba(252,107,3,"+square.alpha+")";
+        ctx.fillStyle = square.color; 
         ctx.fill();
         ctx.resetTransform();
       }
     }
 
-    var starburstWidth = triangleHeight/10.0;
+    var starburstWidth = triangleHeight/4.0;
     var starburstHeight= triangleHeight*2.5;
     var starburstHeightVariance = starburstHeight*0.125;
     var numBursts = 32
@@ -351,11 +353,10 @@ $(document).ready(function(){
     function updateTree(tree, timestamp) {
          // Angle of 0 points straight  up
         var currentLatitude = Math.abs(Math.cos(tree.effectiveAngle));
-        if (tree.hasRoundLeaves && currentLatitude > 0.7) {
+        if (tree.hasRoundLeaves && currentLatitude > 0.8) {
             if (tree.state == LEAVES_GROWING) {
               tree.state = LEAVES_TURNING;
             } else {  
-              console.log("tree state is ", tree.state);
             }
          } else {
             // evergreens are always green; deciduous trees grow when latitude
@@ -363,34 +364,24 @@ $(document).ready(function(){
             tree.state = LEAVES_GROWING;
         }
         
-        // don't update all leaves each frame
-        if (tree.lastLeaf + tree.leafGap < timestamp) {
-          if (tree.state == LEAVES_GROWING) {
+        if (tree.state == LEAVES_GROWING) {
             var foundOne = false;
             tree.leaves.forEach(function (leaf, leafIndex) {
-                if (!foundOne && !leaf.isGreen) {
+                if (!leaf.isGreen) {
                   leaf.color  = makeColorFromBase(leafGreenColorBase);
                   leaf.isGreen = true;
                   leaf.isDead = false;
-                  foundOne = true;
                 }
-               ++leafIndex;
             });
           
         } else if (tree.state == LEAVES_TURNING) {
             // find the oldest non-green leaf and make it orange
-            var foundOne = false;
             tree.leaves.forEach(function (leaf, leafIndex) {
-                if (!foundOne && leaf.isGreen) {
+                if (leaf.isGreen) {
                   leaf.color  = makeColorFromBase(leafOrangeColorBase);
                   leaf.isGreen = false;
-                  foundOne = true;
                 }
-               ++leafIndex;
             });
-            if (!foundOne) {
-              tree.state = LEAVES_FALLING;
-            }
           } else if (tree.state == LEAVES_FALLING ) {
             var leafIndex = 0;
             // find the oldest non-fallen leaf and make it fall 
@@ -411,9 +402,6 @@ $(document).ready(function(){
                 }
                ++leafIndex;
             });
-          }
-
-          tree.lastLeaf = timestamp;
         }
         tree.lastUpdate = timestamp;
     }
@@ -484,7 +472,7 @@ $(document).ready(function(){
     }
 
    var atmosphereRadius = earthCoreRadius*2;
-   var purpleOuterFringeColor = "rgba(48,3,252,0.2)";
+   var purpleOuterFringeColor = "rgba(48,3,252,0.1)";
    function drawBlueCircle(timestamp) {
         var grd = ctx.createRadialGradient(0,0, earthCoreRadius, 0,0, atmosphereRadius);
         grd.addColorStop(0, "#87ceeb");
@@ -501,7 +489,7 @@ $(document).ready(function(){
     }
 
 
-   var exosphereRadius = atmosphereRadius*1.1;
+   var exosphereRadius = atmosphereRadius*1.4;
    function drawPurpleCircle(timestamp) {
         var grd = ctx.createRadialGradient(0,0, atmosphereRadius, 0,0, exosphereRadius);
         grd.addColorStop(0, purpleOuterFringeColor);
