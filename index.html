@@ -264,10 +264,10 @@ $(document).ready(function(){
     }
 
     var numTrees = 64;
-    var trunkTop = earthCoreRadius*1.2;
-    var treeRadius = triangleHeight/4;
+    var trunkTop = earthCoreRadius*1.35;
+    var treeRadius = triangleHeight/3;
     var leavesPerTree = 20;
-    var leafDrawRadius = 4;
+    var leafDrawRadius = 8;
     var trees = [];
 
     // the trees will start small, then grow, then turn orange, then leaves fall?
@@ -277,10 +277,14 @@ $(document).ready(function(){
     var leafOrangeColorBase = {
       'r': 252, 'g': 107, 'b': 3
     };
+    var treeBrownColorBase = {
+      'r': 165, 'g': 42, 'b': 42
+    };
 
     function fudgeColor(base, colorIndex) {
       var baseNum = base[colorIndex];
-      return  (Math.floor((baseNum + (baseNum * 0.2 * Math.random())))).toString();
+      var fudgeDirection = (Math.random()-0.5);
+      return  (Math.floor((baseNum + (baseNum * 0.4* fudgeDirection)))).toString();
     }
 
     function makeColorFromBase(base) {
@@ -317,6 +321,7 @@ $(document).ready(function(){
         'leafGap': 50,
         'lastLeaf': 0,
         'lastUpdate': 0,
+        'trunkColor': makeColorFromBase(treeBrownColorBase),
         'affectievAngle': 0,
         'state': LEAVES_GROWING,
         'hasRoundLeaves': hasRoundLeaves,
@@ -425,8 +430,8 @@ $(document).ready(function(){
           ctx.moveTo(0,earthCoreRadius);
           ctx.lineTo(0,earthCoreRadius + tree.trunkLength);
           ctx.closePath();
-          ctx.strokeStyle = "brown";
-          ctx.strokeWidth = '2px';
+          ctx.strokeStyle = tree.trunkColor;
+          ctx.lineWidth = '3';
           ctx.stroke();
           // then draw the leaves;
 
@@ -449,7 +454,7 @@ $(document).ready(function(){
               ctx.lineTo(leaf.pos[0], trunkTop-leaf.pos[1]); 
               ctx.closePath();
               ctx.strokeStyle = leaf.color;
-              ctx.strokeWidth = '2px';
+              ctx.lineWidth = '4';
               ctx.stroke();
           } else {
               ctx.beginPath();
@@ -458,7 +463,7 @@ $(document).ready(function(){
                       trunkTop+leaf.pos[1]); 
               ctx.closePath();
               ctx.strokeStyle = leaf.color;
-              ctx.strokeWidth = '2px';
+              ctx.lineWidth = '4';
               ctx.stroke();
 
           } 
@@ -472,7 +477,7 @@ $(document).ready(function(){
     }
 
    var atmosphereRadius = earthCoreRadius*2;
-   var purpleOuterFringeColor = "rgba(48,3,252,0.1)";
+   var purpleOuterFringeColor = "rgba(48,3,252,0.4)";
    function drawBlueCircle(timestamp) {
         var grd = ctx.createRadialGradient(0,0, earthCoreRadius, 0,0, atmosphereRadius);
         grd.addColorStop(0, "#87ceeb");
@@ -506,7 +511,7 @@ $(document).ready(function(){
         ctx.resetTransform();
     }
 
-   var cloudHeight = (atmosphereRadius+earthCoreRadius)/2;
+   var cloudHeight = trunkTop+treeRadius*3;
    var cloudRadius = triangleHeight/4;
    var numCloudClusters = 8;
    var cloudsPerCluster = 8;
