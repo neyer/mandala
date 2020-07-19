@@ -7,10 +7,16 @@
 $(document).ready(function(){
 
     c = document.getElementById("draw-canvas");
+    var CanvasWidth = document.body.scrollWidth, 
+        CanvasHeight = document.body.scrollHeight;
+    c.setAttribute("width", CanvasWidth);
+    c.setAttribute("height", CanvasHeight);
+
+    var smallerDimension = Math.min(CanvasWidth, CanvasHeight);
     var ctx = c.getContext("2d");
 
     var lineBorder = 10;
-    var CanvasWidth = 800, CanvasHeight = 800;
+
     var lineWidth = 20;
     var lineSpacing = 5;
     // 7 colors, but some are more bigger than others
@@ -47,7 +53,7 @@ $(document).ready(function(){
       ctx.fillRect(0,0,CanvasWidth,CanvasHeight);
     }
 
-    var triangleHeight = CanvasHeight/(7*2);
+    var triangleHeight = smallerDimension/(7*2);
     var triangleColor = "rgba(255,0,0,0.3)";
     function drawRedTriangle(timestamp) {
         // rotate according to the time
